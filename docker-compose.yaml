@@ -1,0 +1,159 @@
+services:
+  # PostgreSQL Database Service
+  postgres:
+    image: postgres # Using a specific version is recommended
+    container_name: my_postgres_db
+    restart: unless-stopped
+    environment:
+      # POSTGRES_DB: jobappdb
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: password # Change this in production
+      PGDATA: /data/postgres
+    ports:
+      # Exposes the PostgreSQL port to your local machine
+      - "5432:5432"
+    volumes:
+      # Persists database data on your local machine
+      - postgres:/data/postgres
+      - ./init:/docker-entrypoint-initdb.d
+    networks:
+      - app-network
+
+  # pgAdmin Web UI Service
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: my_pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@example.com # Change this
+      PGADMIN_DEFAULT_PASSWORD: admin # Change this in production
+      # PGADMIN_CONFIG_SERVER_MODE: 'False'
+      PGADMIN_SETUP_CONNECTIONS: 'servers.json'
+      PGADMIN_CONFIG_ENHANCED_COOKIE_PROTECTION: 'False'
+      PGADMIN_CONFIG_SESSION_COOKIE_SECURE: 'False'
+      PGADMIN_CONFIG_PROXY_X_FOR_COUNT: '1'
+      PGADMIN_CONFIG_PROXY_X_HOST_COUNT: '1'
+      PGADMIN_CONFIG_PROXY_X_PROTO_COUNT: '1'
+      PGADMIN_CONFIG_PROXY_X_PORT_COUNT: '1'
+      PGADMIN_CONFIG_WTF_CSRF_CHECK_DEFAULT: 'False'   # relax CSRF for proxy
+    ports:
+      # Exposes the pgAdmin web UI to your local machine on port 5050
+      - "5050:80"
+    networks:
+      - app-network
+    volumes:
+      - pgadmin:/var/lib/pgadmin
+      - ./pgadmin/servers.json:/pgadmin4/servers.json:ro  # mount the file read-only
+  
+  config-server:
+    image: rishav235/config-server:latest
+    container_name: config-server
+    ports:
+      - 8080:8080
+    networks:
+      - microservice-network
+      - app-network
+    depends_on:
+      - servicereg
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+
+  servicereg:
+    image: rishav235/service-registry:latest
+    container_name: servicereg
+    ports:
+      - 8761:8761
+    networks:
+      - microservice-network
+      - app-network
+    depends_on:
+      - rabbitmq
+      - zipkin
+      - postgres
+      - pgadmin
+
+  companyms:
+    image: rishav235/companyms:latest
+    container_name: companyms
+    ports:
+      - 8081:8081
+    networks:
+      - microservice-network
+      - app-network
+    depends_on:
+      - servicereg
+      - config-server
+    environment:
+    - SPRING_PROFILES_ACTIVE=docker
+
+  jobms:
+    image: rishav235/jobms:latest
+    container_name: jobms
+    ports:
+      - 8082:8082
+    networks:
+      - microservice-network
+      - app-network
+    depends_on:
+      - servicereg
+      - config-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+
+  reviewms:
+    image: rishav235/reviewms:latest
+    container_name: reviewms
+    ports:
+      - 8083:8083
+    networks:
+      - microservice-network
+      - app-network
+    depends_on:
+      - servicereg
+      - config-server
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+
+  api-gateway:
+    image: rishav235/api-gateway:latest
+    container_name: api-gateway
+    ports:
+      - 8084:8084
+    networks:
+      - microservice-network
+      - app-network
+    depends_on:
+      - servicereg
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+
+  zipkin:
+    image: openzipkin/zipkin
+    container_name: zipkin
+    ports:
+      - 9411:9411
+    networks:
+      - app-network
+  
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: password
+    ports:
+      - 5672:5672
+      - 15672:15672
+    networks:
+      - app-network
+
+# Docker Volumes for data persistence
+volumes:
+  postgres:
+  pgadmin:
+
+networks:
+  app-network:
+    driver: bridge
+  microservice-network:
+    driver: bridge

@@ -1,0 +1,70 @@
+package com.jobms.controller;
+
+import java.util.List;
+
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.jobms.bean.Job;
+import com.jobms.response.JobResponse;
+import com.jobms.service.JobService;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+
+
+@RestController
+@RequestMapping("/jobs")
+public class JobController {
+
+    private JobService jobservice;
+    public JobController(JobService jobservice) {
+        this.jobservice = jobservice;
+    }
+
+    @GetMapping
+    public ResponseEntity<List<JobResponse>> getAllJobs() {
+            return ResponseEntity.ok(jobservice.findAll());
+    }
+
+    @GetMapping(params = "companyId")
+    public ResponseEntity<List<Job>> getJobsByCompany(@RequestParam(value = "companyId", required = true) Long companyId) {
+        return ResponseEntity.ok(jobservice.findByCompanyId(companyId));
+    }
+    
+
+    @PostMapping
+    public ResponseEntity<String> createJob(@RequestBody Job job){ 
+        return jobservice.createJob(job);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<JobResponse> getJobById(@PathVariable Long id) {
+        JobResponse jobResponse = jobservice.getJobById(id);
+        return new ResponseEntity<>(jobResponse,(jobResponse==null)?HttpStatus.NOT_FOUND:HttpStatus.OK);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<String> deleteJob(@PathVariable Long id){
+        jobservice.deleteJobById(id);
+        return new ResponseEntity<>("Successfully deleted",HttpStatus.OK);
+    }
+
+    @DeleteMapping
+    public ResponseEntity<Void> deleteJobsByCompany(@RequestParam(value = "companyId", required = true) Long companyId) {
+        jobservice.deleteByCompanyId(companyId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<JobResponse> updateJob(@PathVariable Long id, @RequestBody Job updatedjob) {
+        return ResponseEntity.ok(jobservice.updateJob(id, updatedjob));
+    }
+
+}
