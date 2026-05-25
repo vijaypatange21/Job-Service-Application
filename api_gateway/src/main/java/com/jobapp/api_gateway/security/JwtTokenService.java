@@ -1,6 +1,7 @@
 package com.jobapp.api_gateway.security;
 
 import com.jobapp.api_gateway.config.JwtProperties;
+import com.jobapp.api_gateway.util.TokenHashing;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -10,21 +11,27 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 import javax.crypto.SecretKey;
+import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.stereotype.Service;
+import reactor.core.publisher.Mono;
 
 @Service
 public class JwtTokenService {
 
-    private final JwtProperties jwtProperties;
+    private static final String BLACKLIST_PREFIX = "jwt:blacklist:";
 
-    public JwtTokenService(JwtProperties jwtProperties) {
+    private final JwtProperties jwtProperties;
+    private final ReactiveStringRedisTemplate redisTemplate;
+
+    public JwtTokenService(JwtProperties jwtProperties, ReactiveStringRedisTemplate redisTemplate) {
         this.jwtProperties = jwtProperties;
+        this.redisTemplate = redisTemplate;
     }
 
-    public JwtPrincipal validate(String token) {
+    public Mono<JwtPrincipal> validate(String token) {
         try {
             Claims claims = Jwts.parser()
                     .verifyWith(signingKey())
@@ -46,7 +53,14 @@ public class JwtTokenService {
                             .map(SimpleGrantedAuthority::new)
                             .collect(Collectors.toSet());
 
-            return new JwtPrincipal(subject, authorities);
+            JwtPrincipal principal = new JwtPrincipal(subject, authorities);
+            return redisTemplate.hasKey(BLACKLIST_PREFIX + TokenHashing.sha256(token))
+                    .flatMap(blacklisted -> {
+                        if (blacklisted) {
+                            return Mono.error(new BadCredentialsException("JWT token has been revoked"));
+                        }
+                        return Mono.just(principal);
+                    });
         } catch (Exception exception) {
             throw new BadCredentialsException("Invalid or expired JWT token", exception);
         }

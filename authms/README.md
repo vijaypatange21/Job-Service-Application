@@ -15,7 +15,9 @@ Production-grade authentication microservice for the JobApp microservices system
 ## APIs
 
 - `POST /api/v1/auth/register` creates a user and returns a JWT.
-- `POST /api/v1/auth/login` authenticates credentials and returns a JWT.
+- `POST /api/v1/auth/login` authenticates credentials and returns access and refresh tokens.
+- `POST /api/v1/auth/refresh` rotates a refresh token and returns a new token pair.
+- `POST /api/v1/auth/logout` revokes a refresh token and blacklists the current access token.
 - `POST /api/v1/auth/validate` validates the Bearer token through the security filter and returns the authenticated subject.
 
 ## File Map

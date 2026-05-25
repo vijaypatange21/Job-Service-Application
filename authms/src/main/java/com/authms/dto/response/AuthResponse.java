@@ -6,7 +6,9 @@ import java.util.Set;
 public record AuthResponse(
         String tokenType,
         String accessToken,
-        Instant expiresAt,
+        String refreshToken,
+        Instant accessTokenExpiresAt,
+        Instant refreshTokenExpiresAt,
         UserResponse user
 ) {
 

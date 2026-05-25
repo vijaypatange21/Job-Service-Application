@@ -13,6 +13,7 @@ The gateway validates JWTs before forwarding protected traffic to downstream ser
 - `/jobs/**` requires `ROLE_USER`, `ROLE_RECRUITER`, or `ROLE_ADMIN`.
 - `/companies/**` requires `ROLE_USER`, `ROLE_RECRUITER`, or `ROLE_ADMIN`.
 - `/reviews/**` requires `ROLE_USER` or `ROLE_ADMIN`.
+- `/admin/**` requires `ROLE_ADMIN`.
 
 ## Files
 
@@ -30,6 +31,9 @@ The gateway validates JWTs before forwarding protected traffic to downstream ser
 - `api_gateway/src/main/java/com/jobapp/api_gateway/security/JsonServerAccessDeniedHandler.java` returns JSON `403 Forbidden` responses for authenticated users without enough roles.
 - `api_gateway/src/main/java/com/jobapp/api_gateway/security/GlobalGatewayExceptionHandler.java` returns JSON responses for unexpected gateway exceptions.
 - `api_gateway/src/main/java/com/jobapp/api_gateway/filter/JwtClaimsRelayGatewayFilterFactory.java` strips spoofed identity headers and forwards trusted `X-Authenticated-User` and `X-Authenticated-Roles` headers to protected downstream services.
+- `api_gateway/src/main/java/com/jobapp/api_gateway/config/RateLimitConfig.java` configures Redis-backed route rate limiting keys.
+- `api_gateway/src/main/java/com/jobapp/api_gateway/filter/CorrelationIdGlobalFilter.java` propagates `X-Correlation-Id`.
+- `api_gateway/src/main/java/com/jobapp/api_gateway/util/TokenHashing.java` hashes JWTs before Redis blacklist lookups.
 
 ## Required Runtime Secret
 

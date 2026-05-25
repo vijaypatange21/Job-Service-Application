@@ -51,9 +51,10 @@ public class SecurityConfig {
                 )
                 .authorizeExchange(exchange -> exchange
                         .pathMatchers("/auth/**", "/eureka/**", "/actuator/**").permitAll()
-                        .pathMatchers("/jobs/**").hasAnyRole("USER", "RECRUITER", "ADMIN")
-                        .pathMatchers("/companies/**").hasAnyRole("USER", "RECRUITER", "ADMIN")
+                        .pathMatchers("/jobs/**").hasAnyRole("USER", "ADMIN")
+                        .pathMatchers("/companies/**").hasAnyRole("USER", "ADMIN")
                         .pathMatchers("/reviews/**").hasAnyRole("USER", "ADMIN")
+                        .pathMatchers("/admin/**").hasRole("ADMIN")
                         .anyExchange().authenticated()
                 )
                 .addFilterAt(jwtAuthenticationWebFilter, SecurityWebFiltersOrder.AUTHENTICATION)

@@ -17,14 +17,12 @@ public class JwtReactiveAuthenticationManager implements ReactiveAuthenticationM
 
     @Override
     public Mono<Authentication> authenticate(Authentication authentication) {
-        return Mono.fromSupplier(() -> {
-            String token = String.valueOf(authentication.getCredentials());
-            JwtTokenService.JwtPrincipal principal = jwtTokenService.validate(token);
-            return new UsernamePasswordAuthenticationToken(
-                    principal.username(),
-                    token,
-                    principal.authorities()
-            );
-        });
+        String token = String.valueOf(authentication.getCredentials());
+        return jwtTokenService.validate(token)
+                .map(principal -> (Authentication) new UsernamePasswordAuthenticationToken(
+                        principal.username(),
+                        token,
+                        principal.authorities()
+                ));
     }
 }

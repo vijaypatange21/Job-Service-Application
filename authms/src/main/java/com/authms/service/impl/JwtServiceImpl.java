@@ -10,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
+import java.util.UUID;
 import javax.crypto.SecretKey;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -24,7 +25,7 @@ public class JwtServiceImpl implements JwtService {
     @Override
     public String generateToken(UserDetails userDetails) {
         Instant now = Instant.now();
-        Instant expiresAt = now.plusMillis(jwtProperties.expiration());
+        Instant expiresAt = now.plusMillis(jwtProperties.accessTokenExpiration());
         Map<String, Object> claims = Map.of(
                 "roles", userDetails.getAuthorities()
                         .stream()
@@ -34,12 +35,18 @@ public class JwtServiceImpl implements JwtService {
 
         return Jwts.builder()
                 .claims(claims)
+                .id(UUID.randomUUID().toString())
                 .subject(userDetails.getUsername())
                 .issuer(jwtProperties.issuer())
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiresAt))
                 .signWith(signingKey())
                 .compact();
+    }
+
+    @Override
+    public String extractTokenId(String token) {
+        return extractAllClaims(token).getId();
     }
 
     @Override

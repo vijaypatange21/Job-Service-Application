@@ -10,6 +10,11 @@ spring:
     username: ${AUTH_DB_USERNAME:user}
     password: ${AUTH_DB_PASSWORD:password}
     driver-class-name: org.postgresql.Driver
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
   jpa:
     hibernate:
       ddl-auto: update
@@ -55,9 +60,12 @@ security:
   jwt:
     issuer: ${JWT_ISSUER:jobapp-authms}
     secret: ${JWT_SECRET:change-this-dev-only-secret-key-change-this-dev-only-secret-key}
-    expiration: ${JWT_EXPIRATION:3600000}
+    access-token-expiration: ${JWT_ACCESS_TOKEN_EXPIRATION:900000}
+    refresh-token-expiration: ${JWT_REFRESH_TOKEN_EXPIRATION:604800000}
 
 logging:
+  pattern:
+    level: "%5p [${spring.application.name},%X{correlationId:-}]"
   level:
     root: INFO
     com.authms: DEBUG
@@ -70,6 +78,9 @@ spring:
     import: optional:configserver:http://config-server:8080
   datasource:
     url: ${AUTH_DB_URL:jdbc:postgresql://postgres:5432/auth_db}
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
 
 eureka:
   client:

@@ -2,6 +2,7 @@ package com.authms.security;
 
 import com.authms.service.CustomUserDetailsService;
 import com.authms.service.JwtService;
+import com.authms.service.TokenBlacklistService;
 import io.jsonwebtoken.JwtException;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
@@ -26,6 +27,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtService jwtService;
     private final CustomUserDetailsService userDetailsService;
+    private final TokenBlacklistService tokenBlacklistService;
 
     @Override
     protected void doFilterInternal(
@@ -35,7 +37,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException {
         String token = resolveToken(request);
 
-        if (token != null && SecurityContextHolder.getContext().getAuthentication() == null) {
+        if (token != null
+                && !tokenBlacklistService.isBlacklisted(token)
+                && SecurityContextHolder.getContext().getAuthentication() == null) {
             try {
                 String username = jwtService.extractUsername(token);
                 UserDetails userDetails = userDetailsService.loadUserByUsername(username);

@@ -6,8 +6,8 @@ services:
     restart: unless-stopped
     environment:
       # POSTGRES_DB: jobappdb
-      POSTGRES_USER: user
-      POSTGRES_PASSWORD: password # Change this in production
+      POSTGRES_USER: ${POSTGRES_USER:-user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
       PGDATA: /data/postgres
     ports:
       # Exposes the PostgreSQL port to your local machine
@@ -68,9 +68,53 @@ services:
       - app-network
     depends_on:
       - rabbitmq
+      - redis
       - zipkin
       - postgres
       - pgadmin
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: redis
+    restart: unless-stopped
+    command: >
+      sh -c 'if [ -n "$$REDIS_PASSWORD" ]; then
+      redis-server --appendonly yes --requirepass "$$REDIS_PASSWORD";
+      else redis-server --appendonly yes;
+      fi'
+    environment:
+      REDIS_PASSWORD: ${REDIS_PASSWORD:-}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis:/data
+    networks:
+      - app-network
+      - microservice-network
+
+  authms:
+    build:
+      context: ./authms
+    image: jobapp/authms:latest
+    container_name: authms
+    ports:
+      - 8085:8085
+    networks:
+      - microservice-network
+      - app-network
+    depends_on:
+      - servicereg
+      - config-server
+      - postgres
+      - redis
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - JWT_ISSUER=${JWT_ISSUER:-jobapp-authms}
+      - JWT_SECRET=${JWT_SECRET:-change-this-dev-only-secret-key-change-this-dev-only-secret-key}
+      - AUTH_DB_USERNAME=${AUTH_DB_USERNAME:-user}
+      - AUTH_DB_PASSWORD=${AUTH_DB_PASSWORD:-password}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
 
   companyms:
     image: rishav235/companyms:latest
@@ -84,7 +128,8 @@ services:
       - servicereg
       - config-server
     environment:
-    - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_PROFILES_ACTIVE=docker
+      - INTERNAL_SERVICE_SECRET=${INTERNAL_SERVICE_SECRET:-change-this-internal-service-secret}
 
   jobms:
     image: rishav235/jobms:latest
@@ -99,6 +144,7 @@ services:
       - config-server
     environment:
       - SPRING_PROFILES_ACTIVE=docker
+      - INTERNAL_SERVICE_SECRET=${INTERNAL_SERVICE_SECRET:-change-this-internal-service-secret}
 
   reviewms:
     image: rishav235/reviewms:latest
@@ -113,9 +159,12 @@ services:
       - config-server
     environment:
       - SPRING_PROFILES_ACTIVE=docker
+      - INTERNAL_SERVICE_SECRET=${INTERNAL_SERVICE_SECRET:-change-this-internal-service-secret}
 
   api-gateway:
-    image: rishav235/api-gateway:latest
+    build:
+      context: ./api_gateway
+    image: jobapp/api-gateway:latest
     container_name: api-gateway
     ports:
       - 8084:8084
@@ -124,8 +173,15 @@ services:
       - app-network
     depends_on:
       - servicereg
+      - authms
+      - redis
     environment:
       - SPRING_PROFILES_ACTIVE=docker
+      - JWT_ISSUER=${JWT_ISSUER:-jobapp-authms}
+      - JWT_SECRET=${JWT_SECRET:-change-this-dev-only-secret-key-change-this-dev-only-secret-key}
+      - INTERNAL_SERVICE_SECRET=${INTERNAL_SERVICE_SECRET:-change-this-internal-service-secret}
+      - REDIS_HOST=redis
+      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
 
   zipkin:
     image: openzipkin/zipkin
@@ -151,6 +207,7 @@ services:
 volumes:
   postgres:
   pgadmin:
+  redis:
 
 networks:
   app-network:
